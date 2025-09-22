@@ -1,6 +1,8 @@
 ﻿/* eslint-env node */
-const { configs } = require('typescript-eslint');
-module.exports = [
-  ...configs.recommended,
-  { languageOptions: { parserOptions: { ecmaVersion: 'latest', sourceType: 'module' } }, rules: { 'no-console': 'warn' } }
-];
+module.exports = {
+  parser: "@typescript-eslint/parser",
+  plugins: ["@typescript-eslint"],
+  extends: ["eslint:recommended","plugin:@typescript-eslint/recommended"],
+  parserOptions: { ecmaVersion: "latest", sourceType: "module" },
+  rules: { "no-console": "warn" }
+};
