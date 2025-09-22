@@ -3,11 +3,12 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default [
+  // ignore non-TS build artifacts & legacy .cjs files
+  { ignores: ["**/*.cjs", "**/node_modules/**", "**/dist/**"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     rules: {
-      // why: keep console noise low in Lambda code
       "no-console": "warn"
     }
   }
