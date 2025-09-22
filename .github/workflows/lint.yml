@@ -1,4 +1,3 @@
-
 name: Lint Lambda
 on:
   push:
@@ -8,18 +7,26 @@ on:
   pull_request:
     paths:
       - 'services/repo-creator/**'
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      # Debug: prove the lockfile exists before caching
+      - name: Debug – list files and assert lockfile
+        run: |
+          pwd
+          ls -la
+          ls -la services/repo-creator
+          test -f services/repo-creator/package-lock.json || (echo "::error::Lockfile missing"; exit 1)
+
       - name: Use Node.js 20 with npm cache (repo-creator)
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          # IMPORTANT: point cache to the subfolder's lockfile
           cache-dependency-path: services/repo-creator/package-lock.json
 
       - name: Install deps
