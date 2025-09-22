@@ -1,0 +1,24 @@
+﻿name: Lint Lambda
+on:
+  push:
+    paths:
+      - 'services/repo-creator/**'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    paths:
+      - 'services/repo-creator/**'
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install deps
+        working-directory: services/repo-creator
+        run: npm ci
+      - name: Lint
+        working-directory: services/repo-creator
+        run: npm run lint

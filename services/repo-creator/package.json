@@ -1,0 +1,21 @@
+﻿{
+  ""name"": ""repo-creator"",
+  ""private"": true,
+  ""type"": ""module"",
+  ""scripts"": {
+    ""build"": ""tsc -b"",
+    ""lint"": ""eslint . --ext .ts --max-warnings=0"",
+    ""test"": ""node -e \""console.log('no tests yet')\""""
+  },
+  ""dependencies"": {
+    ""@aws-sdk/client-secrets-manager"": ""^3.670.0""
+  },
+  ""devDependencies"": {
+    ""@types/aws-lambda"": ""^8.10.136"",
+    ""@types/node"": ""^20.11.30"",
+    ""eslint"": ""^9.11.1"",
+    ""@eslint/js"": ""^9.11.1"",
+    ""typescript"": ""^5.6.3"",
+    ""typescript-eslint"": ""^8.8.1""
+  }
+}
