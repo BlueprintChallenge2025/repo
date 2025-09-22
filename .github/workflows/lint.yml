@@ -1,4 +1,5 @@
-﻿name: Lint Lambda
+
+name: Lint Lambda
 on:
   push:
     paths:
@@ -12,13 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Use Node.js 20 with npm cache (repo-creator)
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          # IMPORTANT: point cache to the subfolder's lockfile
+          cache-dependency-path: services/repo-creator/package-lock.json
+
       - name: Install deps
         working-directory: services/repo-creator
         run: npm ci
+
       - name: Lint
         working-directory: services/repo-creator
         run: npm run lint
