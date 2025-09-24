@@ -16,7 +16,6 @@ A small system that creates GitHub repositories in the org **BlueprintChallenge2
 - **CORS**: API Gateway handles `OPTIONS` and returns `Access-Control-Allow-*` so the UI can call from browser.
 - **Web**: React form -> fetch `${VITE_API_BASE_URL}/create?name=...`
 
-```mermaid
 flowchart LR
   A[React UI] -- POST /create --> B[API Gateway]
   B --> C[Lambda function]
