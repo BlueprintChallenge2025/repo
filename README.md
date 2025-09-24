@@ -1,23 +1,21 @@
-# README.md (root)
+# F25 Technical Challenge — Codebase Deployment Serverless Function
 
-# F25 Technical Challenge – Repo Creator
+**Owner org:** BlueprintChallenge2025  
+**API:** AWS API Gateway + Lambda (Node 20) via **AWS CDK**  
+**UI:** React + Vite (TypeScript), deployed on Netlify
 
-## Overview
-A small system that creates GitHub repositories in the org **BlueprintChallenge2025** via:
-- **AWS Lambda** (Node/TS) exposed by **API Gateway**
-- **React + Vite** web UI to call the API
-- **AWS CDK** for deployment
-- **GitHub PAT** stored in **AWS Secrets Manager**
+## What it does
+- POST **`/create?name=<repo-name>`** → creates a repository in GitHub org **BlueprintChallenge2025**.
+- Lambda reads a GitHub **PAT** from AWS Secrets Manager and calls GitHub REST API.
+- CORS enabled for the web app.
 
-## Architecture
-- **API**: `POST /create?name=<repo-name>`  
-  - Lambda reads PAT from Secrets Manager key: `f25/github/repo-creator` (JSON: `{"token":"<PAT>"}`)  
-  - Calls GitHub REST API to create a repo under the organization.  
-- **CORS**: API Gateway handles `OPTIONS` and returns `Access-Control-Allow-*` so the UI can call from browser.
-- **Web**: React form -> fetch `${VITE_API_BASE_URL}/create?name=...`
+## Quick Start (Local)
+# API base from CloudFormation
+aws cloudformation describe-stacks --region us-east-1 --stack-name F25Stack \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" --output text
 
-flowchart LR
-  A[React UI] -- POST /create --> B[API Gateway]
-  B --> C[Lambda function]
-  C --> D[Secrets Manager (PAT)]
-  C --> E[GitHub Org: BlueprintChallenge2025]
+# UI (from repo root)
+cd web
+cp .env.example .env   # or create and set VITE_API_BASE_URL
+npm ci
+npm run dev
