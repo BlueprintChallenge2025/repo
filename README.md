@@ -1,251 +1,181 @@
-F25 Repo Creator
+# F25 – Serverless Repo Creator
 
-Spin up a brand-new GitHub repository inside your org from a tiny serverless API—then kick it off from a clean React UI.
+A tiny, production-style demo that creates GitHub repositories **from a simple web page**.  
+Click “Create Repository”, type a name, and it spins up a repo inside a test GitHub organization—backed by AWS Lambda and API Gateway, deployed via CDK, and fronted by a Netlify site.
 
-What it is:
+---
 
-Frontend: React + Vite (TypeScript), deployed to Netlify
+## Live Demo & Repo
 
-Backend: AWS Lambda (Node 20) behind API Gateway (REST), deployed via AWS CDK (TypeScript)
+- **Live site:** https://blueprintchallenge2025-aryanrawat.netlify.app/  
+- **Source repo:** https://github.com/BlueprintChallenge2025/repo
 
-Auth: GitHub PAT stored in AWS Secrets Manager
+> The site is “always on.” If anything fails, it’s usually the backend (AWS) or your GitHub PAT configuration—not Netlify.
 
-One endpoint: POST /create?name=<repo-name>
+---
 
-Org: BlueprintChallenge2025 (configurable)
+## What this does
 
-Demo
+1. You open a small React page and enter a repo name.
+2. The page calls a stable API at `/api/create?name=...` (proxied by Netlify).
+3. API Gateway forwards that to a Lambda.
+4. The Lambda reads a **GitHub Personal Access Token (PAT)** from **AWS Secrets Manager** (never exposed to the browser).
+5. The Lambda calls the **GitHub REST API** to create the repo in a dedicated test org.
+6. You see a clear success message with a link to the new repo—or a friendly error (e.g., “already exists”).
 
-Production UI: [https://blueprintchallenge2025-aryanrawat.netlify.app](url)
+---
 
-API base URL: auto-proxied behind the UI via /api (no editing the UI when the API changes)
+## Why the architecture looks like this
 
-Browser (React UI)
-     │     POST /api/create?name=my-repo
-     ▼
-Netlify (static hosting + proxy rule to /api/*)
-     │     → https://{apiId}.execute-api.us-east-1.amazonaws.com/prod/create
-     ▼
-API Gateway (REST)
-     │
-     ▼
-Lambda (Node 20, TypeScript)
-     ├─ reads GitHub PAT from Secrets Manager (JSON: {"token":"..."})
-     ├─ calls GitHub: POST /orgs/{org}/repos
-     └─ returns JSON with clear success/error + CORS headers
-What you can do
+- **Serverless:** Cheap, low-ops, and easy to reason about.
+- **Credential hygiene:** The PAT lives in **Secrets Manager**, not in the frontend or code.
+- **Stable frontend URL:** The UI is static and deployed to Netlify; it doesn’t change.
+- **Stable backend URL:** The UI uses a Netlify **proxy** (`/api/*`) that forwards to API Gateway, so we don’t hardcode the AWS URL in the app.
 
-Type a repo name and click Create Repository
+Browser
+│
+▼
+Netlify (static hosting)
+└── /api/* ──► API Gateway (REST) ──► Lambda (Node/TS)
+│
+└──► AWS Secrets Manager (GitHub PAT)
+│
+└──► GitHub API (create repo)
 
-See a green confirmation with a link when it’s created
+markdown
+Copy code
 
-If it fails (e.g., duplicate name, bad token), see a clear reason
+---
 
-Requirements
+## What I built (mapped to the challenge)
 
-Node.js >= 18 (Node 20 recommended)
+**Interface**
+- ✅ React webpage where users type a repo name and click **Create Repository**.
+- ✅ Clear confirmation on success with a link, and helpful error messages on failure.
 
-AWS account with permissions to use CloudFormation, API Gateway, Lambda, and Secrets Manager
+**Serverless Function**
+- ✅ AWS Lambda (Node.js/TypeScript) behind **API Gateway** (REST).
 
-AWS CLI configured (aws configure)
+**API**
+- ✅ Single endpoint: `POST /create?name=<repo-name>`.
+- ✅ Uses a GitHub PAT stored in **Secrets Manager**.
+- ✅ Returns structured JSON describing success **or** a precise error (e.g., duplicate repo).
 
-AWS CDK v2 (npm i -g aws-cdk optional; we use npx cdk)
+**Documentation**
+- ✅ This README explains setup, architecture, and ops in plain English.
 
-(Windows) If you don’t have Docker, we bundle Lambda locally – no extra setup required
+**CI**
+- ✅ Lint workflow (ESLint) for the function’s source.
 
-# 0) Install dependencies
-npm --prefix infra install
-npm --prefix services/repo-creator install
-npm --prefix web install
+**Deployment**
+- ✅ **AWS CDK** to provision API Gateway, Lambda, IAM, and Secret.
+- ✅ **Netlify** for the web app with a permanent production URL.
 
-1) Bootstrap & deploy the infrastructure (CDK)
+**Deliverables**
+- ✅ Repo URL & Deployment URL (see above).
 
-Do this once per AWS account/region.
+---
 
-# Bootstrap the environment (replace with your AWS account ID once)
-npx cdk bootstrap aws://YOUR_AWS_ACCOUNT_ID/us-east-1
+## How to run it locally (optional for reviewers)
 
-# Build & deploy the stack
-Push-Location infra
-$env:AWS_LAMBDA_NODEJS_FORCE_LOCAL = "true"   # bundle lambda without Docker
-npx cdk deploy F25Stack
-Pop-Location
+> You do **not** need this to try the live demo, but it’s here for completeness.
 
-Fetch your API base URL from CloudFormation:
+1. **Install Node 20+** and **AWS CLI** with credentials for the target account.
+2. From repo root:
+   ```bash
+   npm --prefix web ci
+   npm --prefix web run dev
+Open http://localhost:5173/
+The UI calls /api/*, which Netlify handles in production. Locally, use the curl commands below to talk to the live API directly if you want to sanity-check:
 
-$API_BASE = aws cloudformation describe-stacks --region us-east-1 --stack-name F25Stack `
-  --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" --output text
-$API_BASE
+bash
+Copy code
+API="https://m2x7ksgp3f.execute-api.us-east-1.amazonaws.com/prod"
+NAME="demo-$RANDOM"
+curl -i -X POST "$API/create?name=$NAME"
+How the backend is deployed
+The CDK stack creates:
 
-2) Store your GitHub PAT in Secrets Manager
+AWS::ApiGateway::RestApi with a /create resource and CORS enabled.
 
-Secret name (created by CDK): f25/github/repo-creator
+AWS::Lambda::Function (Node.js 20) handling POST /create.
 
-Format must be JSON: {"token":"YOUR_PAT"}
+AWS::SecretsManager::Secret (name like f25/github/repo-creator) holding the PAT as JSON.
 
-PAT user must have permission to create repos in the org.
-For classic PAT, scopes typically include repo and org admin privileges (or use a fine-grained PAT with “Repository administration” permission on the org).
+Important: The secret’s value must be valid JSON:
 
-aws secretsmanager put-secret-value `
-  --region us-east-1 `
-  --secret-id "f25/github/repo-creator" `
-  --secret-string "{""token"":""YOUR_PAT""}"
+json
+Copy code
+{"token":"ghp_..."}
+If you see errors like “Invalid JSON in secret” or “Secrets Manager can’t find the secret,” it means the value is not JSON or the name/region doesn’t match what the Lambda expects.
 
-  Verify the secret is valid JSON:
+Security notes
+The GitHub PAT must have repo and admin:org scope (or the minimum required for creating repos in your test org).
 
-$raw = aws secretsmanager get-secret-value --region us-east-1 `
-  --secret-id "f25/github/repo-creator" --query SecretString --output text
-$raw          # should look like {"token":"ghp_..."}
+It’s stored in Secrets Manager (never in the frontend code or environment).
 
-3) Run the UI locally
+Rotate the PAT periodically:
 
-We proxy /api/* to your API in Netlify prod. Locally, just call the API directly by setting the env file (or continue to use the Netlify dev proxy if you’ve set it up).
+Create a new token in GitHub.
 
-# Create an env file for the local dev server (optional if using proxy)
-Set-Content -Encoding utf8 -NoNewline -Path .\web\.env `
-  -Value "VITE_API_BASE_URL=$API_BASE"
+Update the secret value to {"token":"ghp_new..."}.
 
-# Start the dev server
-cd web
-npm run dev
-# open http://localhost:5173
+No frontend changes required.
 
+Error messages you might see (and what they mean)
+“Already exists” – The repo name is taken in the org. Try another name.
 
-Tip: If you’ve configured a _redirects file to proxy /api/* locally with netlify dev, you can omit VITE_API_BASE_URL and just use /api.
+“Missing Authentication Token” – Wrong API path or stage (e.g., /prod) or method mismatch.
 
-4) Deploy the UI to Netlify
+“CORS” errors – CORS headers weren’t returned (fixed in API) or you’re calling the raw API Gateway URL directly from the browser. Use the Netlify site or the /api/* proxy.
 
-Netlify config:
+“Secrets Manager can't find the specified secret” – The Lambda looked up a secret name that doesn’t exist in that region. Confirm the secret name and region match the CDK outputs.
 
-Base directory: web
+Operational notes
+The Netlify site URL is stable and always live.
 
-Build command: npm run build
+If you redeploy the API Gateway and its base URL changes, the Netlify proxy keeps the UI working without code changes.
 
-Publish directory: web/dist
+Costs are minimal (serverless). Delete the stack to stop charges.
 
-Node version: 20
+What would I improve with more time?
+Add an org-selector or visibility dropdown (public/private) in the UI.
 
-Environment variables: (optional) VITE_API_BASE_URL (only if you don’t proxy)
+Add unit tests for the Lambda (e.g., mocking GitHub responses).
 
-Proxy rule: Add a _redirects file to route /api/* → API Gateway:
+Add rate-limit feedback if GitHub throttles requests.
 
-web/public/_redirects
+Add an activity log (CloudWatch Insights link from the UI).
 
-/api/*  https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/prod/:splat  200!
+Add GitHub branch protections or repo templating on creation.
 
-
-Then:
-
-# build locally (optional)
-npm --prefix web run build
-
-# deploy via Netlify CLI (optional)
-netlify deploy --prod
-
-API
-
+Quick reference
 Endpoint: POST /create?name=<repo-name>
 
-Returns:
+Success response:
 
-201 { success: true, repo: { name, html_url } }
+json
+Copy code
+{
+  "success": true,
+  "repo": { "name": "<name>", "html_url": "https://github.com/<org>/<name>" }
+}
+Failure response (example):
 
-422 { success: false, error: "Repository already exists ..." }
+json
+Copy code
+{
+  "success": false,
+  "error": "Repository already exists: <name>"
+}
+Contact
+If something breaks on the demo site, it’s almost always the backend secret configuration or AWS stack drift. Check:
 
-401/403 { success: false, error: "Unauthorized/Forbidden ..." }
+CloudFormation stack outputs (API base URL)
 
-400 { success: false, error: "Invalid name: ..." }
+Lambda CloudWatch logs for the request ID shown in the UI
 
-500 { success: false, error: "GitHub error ..." }
+Secrets Manager value format ({"token":"..."}")
 
-CORS: OPTIONS /create returns 204 with Access-Control-Allow-* headers
+Thanks for reading and trying the demo!
 
-Example (PowerShell):
-
-$API = $API_BASE.TrimEnd('/')
-$NAME = "demo-$([DateTime]::UtcNow.ToString('yyyyMMddHHmmss'))"
-curl.exe -i -X POST "$API/create?name=$NAME"
-
-Configuration knobs
-
-Lambda (set in CDK stack):
-
-SECRET_NAME — default: f25/github/repo-creator
-
-GITHUB_ORG — default: BlueprintChallenge2025
-
-UI:
-
-Uses /api by default (via Netlify proxy).
-
-If you’d rather call API Gateway directly, set web/.env:
-
-VITE_API_BASE_URL=https://{apiId}.execute-api.us-east-1.amazonaws.com/prod
-
-CI
-
-GitHub Actions lints the Lambda code on each push/PR.
-
-Workflow file: .github/workflows/lint.yml
-
-We use ESLint (flat config) with TypeScript rules and --max-warnings=0.
-
-Run locally:
-
-npm --prefix services/repo-creator run lint
-
-Troubleshooting
-
-“Invalid JSON in secret…”
-Your secret’s value must be valid JSON like:
-
-{"token":"ghp_xxx"}
-
-
-Fix:
-
-aws secretsmanager put-secret-value --region us-east-1 `
-  --secret-id "f25/github/repo-creator" `
-  --secret-string "{""token"":""ghp_xxx""}"
-
-
-“Secrets Manager can’t find the specified secret.”
-
-Confirm the name (f25/github/repo-creator) and region (us-east-1).
-
-Check the Lambda environment SECRET_NAME in the CDK stack matches.
-
-“Missing Authentication Token” (API Gateway)
-
-You’re hitting the wrong URL or stage. Re-fetch the base URL from CloudFormation.
-
-Ensure the path is exactly /prod/create (UI uses /api/create which Netlify proxies).
-
-CORS errors in the browser
-
-Our API responds with Access-Control-Allow-Origin: * and supports OPTIONS.
-
-Make sure your Netlify _redirects rule ends with 200! and points to /prod/:splat.
-
-422 “Repository already exists”
-
-The name is already taken in your org. Pick a different name. The UI shows the exact reason.
-
-CDK needs Docker?
-
-We bundle locally to avoid Docker: set
-AWS_LAMBDA_NODEJS_FORCE_LOCAL=true before cdk deploy.
-
-Bootstrap errors
-
-Run npx cdk bootstrap aws://YOUR_AWS_ACCOUNT_ID/us-east-1 once per account/region.
-
-Architecture notes & trade-offs
-
-Simple surface area: one POST /create endpoint. Easy to audit and secure.
-
-Secrets Manager, not env: keeps the PAT out of code and config. Rotatable at runtime.
-
-Netlify proxy: gives you a stable /api URL in the UI; you can change the real API without rebuilding the frontend.
-
-Plain JSON responses: humans can read errors; machines can parse them.
