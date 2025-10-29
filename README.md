@@ -152,28 +152,6 @@ Add GitHub branch protections or repo templating on creation.
 Quick reference
 Endpoint: POST /create?name=<repo-name>
 
-Success response:
-
-json
-Copy code
-{
-  "success": true,
-  "repo": { "name": "<name>", "html_url": "https://github.com/<org>/<name>" }
-}
-Failure response (example):
-
-json
-Copy code
-{
-  "success": false,
-  "error": "Repository already exists: <name>"
-}
-Contact
-If something breaks on the demo site, it’s almost always the backend secret configuration or AWS stack drift. Check:
-
-CloudFormation stack outputs (API base URL)
-
-Lambda CloudWatch logs for the request ID shown in the UI
 
 Secrets Manager value format ({"token":"..."}")
 
