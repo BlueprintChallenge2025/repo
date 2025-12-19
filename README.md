@@ -1,159 +1,104 @@
-# F25 – Serverless Repo Creator
+F25 – Serverless Repo Creator
 
-A tiny, production-style demo that creates GitHub repositories **from a simple web page**.  
-Click “Create Repository”, type a name, and it spins up a repo inside a test GitHub organization—backed by AWS Lambda and API Gateway, deployed via CDK, and fronted by a Netlify site.
+This is a small but production style demo that lets you create GitHub repositories from a simple web page.
 
----
+You open the site, type a repository name, click Create Repository, and a new repo is created inside a test GitHub organization. Behind the scenes it uses AWS Lambda and API Gateway, is deployed with CDK, and the frontend is hosted on Netlify.
 
-## Live Demo & Repo
+The goal was to keep the system simple, secure, and realistic, not just a toy script.
 
-- **Live site:** https://blueprintchallenge2025-aryanrawat.netlify.app/  
-- **Source repo:** https://github.com/BlueprintChallenge2025/repo
+Live demo and source
 
-> The site is “always on.” If anything fails, it’s usually the backend (AWS) or your GitHub PAT configuration—not Netlify.
+Live site: https://blueprintchallenge2025-aryanrawat.netlify.app/
 
----
+Source repo: https://github.com/BlueprintChallenge2025/repo
 
-## What this does
+The site is always live. If something breaks, it is almost always related to AWS or the GitHub Personal Access Token configuration, not Netlify.
 
-1. You open a small React page and enter a repo name.
-2. The page calls a stable API at `/api/create?name=...` (proxied by Netlify).
-3. API Gateway forwards that to a Lambda.
-4. The Lambda reads a **GitHub Personal Access Token (PAT)** from **AWS Secrets Manager** (never exposed to the browser).
-5. The Lambda calls the **GitHub REST API** to create the repo in a dedicated test org.
-6. You see a clear success message with a link to the new repo—or a friendly error (e.g., “already exists”).
+How it works
 
----
+At a high level, this is the flow:
 
-## Why the architecture looks like this
+You open a small React app and enter a repository name.
 
-- **Serverless:** Cheap, low-ops, and easy to reason about.
-- **Credential hygiene:** The PAT lives in **Secrets Manager**, not in the frontend or code.
-- **Stable frontend URL:** The UI is static and deployed to Netlify; it doesn’t change.
-- **Stable backend URL:** The UI uses a Netlify **proxy** (`/api/*`) that forwards to API Gateway, so we don’t hardcode the AWS URL in the app.
+The frontend sends a request to /api/create?name=....
+
+Netlify proxies that request to API Gateway.
+
+API Gateway triggers a Lambda function.
+
+The Lambda pulls a GitHub Personal Access Token from AWS Secrets Manager.
+
+The Lambda calls the GitHub REST API to create the repository.
+
+You get a success message with a link to the new repo, or a clear error if something goes wrong.
+
+The GitHub token never touches the browser and is never hardcoded anywhere.
+
+Why it is built this way
+
+I intentionally kept the architecture simple but realistic.
+
+Serverless: Low overhead, low cost, and easy to operate.
+
+Secure credentials: The GitHub token lives in AWS Secrets Manager, not in frontend code or environment variables.
+
+Stable frontend: The Netlify site is static and does not change when the backend changes.
+
+Stable API path: The frontend always calls /api/*, and Netlify handles forwarding to API Gateway. This avoids hardcoding AWS URLs into the app.
+
+Rough flow:
 
 Browser
-│
-▼
-Netlify (static hosting)
-└── /api/* ──► API Gateway (REST) ──► Lambda (Node/TS)
-│
-└──► AWS Secrets Manager (GitHub PAT)
-│
-└──► GitHub API (create repo)
+→ Netlify (static site)
+→ /api/* proxy
+→ API Gateway
+→ Lambda
+→ Secrets Manager
+→ GitHub API
 
-markdown
-Copy code
+What I built
 
----
+Frontend
 
-## What I built (mapped to the challenge)
+A simple React interface where users enter a repo name and click a button.
 
-**Interface**
-- React webpage where users type a repo name and click **Create Repository**.
-- Clear confirmation on success with a link, and helpful error messages on failure.
+Clear success messages with a direct link to the created repository.
 
-**Serverless Function**
-- AWS Lambda (Node.js/TypeScript) behind **API Gateway** (REST).
+Friendly error messages for common cases like duplicate names.
 
-**API**
-- Single endpoint: `POST /create?name=<repo-name>`.
-- Uses a GitHub PAT stored in **Secrets Manager**.
-- Returns structured JSON describing success **or** a precise error (e.g., duplicate repo).
+Backend
 
-**Documentation**
-- This README explains setup, architecture, and ops in plain English.
+A Node.js and TypeScript AWS Lambda function.
 
-**CI**
-- Lint workflow (ESLint) for the function’s source.
+Exposed through API Gateway with CORS enabled.
 
-**Deployment**
-- **AWS CDK** to provision API Gateway, Lambda, IAM, and Secret.
-- **Netlify** for the web app with a permanent production URL.
+Single endpoint that handles repo creation.
 
-**Deliverables**
-- Repo URL & Deployment URL (see above).
+API
 
----
+POST /create?name=<repo-name>
 
-## How to run it locally (optional for reviewers)
+Uses a GitHub PAT stored securely in Secrets Manager.
 
-> You do **not** need this to try the live demo, but it’s here for completeness.
+Returns structured JSON for both success and failure cases.
 
-1. **Install Node 20+** and **AWS CLI** with credentials for the target account.
-2. From repo root:
-   ```bash
-   npm --prefix web ci
-   npm --prefix web run dev
-Open http://localhost:5173/
-The UI calls /api/*, which Netlify handles in production. Locally, use the curl commands below to talk to the live API directly if you want to sanity-check:
+Infrastructure
 
-bash
-Copy code
-API="https://m2x7ksgp3f.execute-api.us-east-1.amazonaws.com/prod"
-NAME="demo-$RANDOM"
-curl -i -X POST "$API/create?name=$NAME"
-How the backend is deployed
-The CDK stack creates:
+AWS CDK to define and deploy API Gateway, Lambda, IAM permissions, and the secret.
 
-AWS::ApiGateway::RestApi with a /create resource and CORS enabled.
+Netlify for frontend hosting with a permanent URL.
+What I would improve with more time
 
-AWS::Lambda::Function (Node.js 20) handling POST /create.
+Add visibility options like public vs private repos.
 
-AWS::SecretsManager::Secret (name like f25/github/repo-creator) holding the PAT as JSON.
+Add repo templates or default branch protections.
 
-Important: The secret’s value must be valid JSON:
+Add unit tests for the Lambda with mocked GitHub responses.
 
-json
-Copy code
-{"token":"ghp_..."}
-If you see errors like “Invalid JSON in secret” or “Secrets Manager can’t find the secret,” it means the value is not JSON or the name/region doesn’t match what the Lambda expects.
+Add basic rate limit handling and feedback.
 
-Security notes
-The GitHub PAT must have repo and admin:org scope (or the minimum required for creating repos in your test org).
+Add a simple activity log or CloudWatch link.
 
-It’s stored in Secrets Manager (never in the frontend code or environment).
+CI
 
-Rotate the PAT periodically:
-
-Create a new token in GitHub.
-
-Update the secret value to {"token":"ghp_new..."}.
-
-No frontend changes required.
-
-Error messages you might see (and what they mean)
-“Already exists” – The repo name is taken in the org. Try another name.
-
-“Missing Authentication Token” – Wrong API path or stage (e.g., /prod) or method mismatch.
-
-“CORS” errors – CORS headers weren’t returned (fixed in API) or you’re calling the raw API Gateway URL directly from the browser. Use the Netlify site or the /api/* proxy.
-
-“Secrets Manager can't find the specified secret” – The Lambda looked up a secret name that doesn’t exist in that region. Confirm the secret name and region match the CDK outputs.
-
-Operational notes
-The Netlify site URL is stable and always live.
-
-If you redeploy the API Gateway and its base URL changes, the Netlify proxy keeps the UI working without code changes.
-
-Costs are minimal (serverless). Delete the stack to stop charges.
-
-What would I improve with more time?
-Add an org-selector or visibility dropdown (public/private) in the UI.
-
-Add unit tests for the Lambda (e.g., mocking GitHub responses).
-
-Add rate-limit feedback if GitHub throttles requests.
-
-Add an activity log (CloudWatch Insights link from the UI).
-
-Add GitHub branch protections or repo templating on creation.
-
-Quick reference
-Endpoint: POST /create?name=<repo-name>
-
-
-Secrets Manager value format ({"token":"..."}")
-
-Thanks for reading and trying the demo!
-
+Basic linting workflow for the backend function.
