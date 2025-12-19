@@ -50,29 +50,29 @@ Copy code
 ## What I built (mapped to the challenge)
 
 **Interface**
-- ✅ React webpage where users type a repo name and click **Create Repository**.
-- ✅ Clear confirmation on success with a link, and helpful error messages on failure.
+- React webpage where users type a repo name and click **Create Repository**.
+- Clear confirmation on success with a link, and helpful error messages on failure.
 
 **Serverless Function**
-- ✅ AWS Lambda (Node.js/TypeScript) behind **API Gateway** (REST).
+- AWS Lambda (Node.js/TypeScript) behind **API Gateway** (REST).
 
 **API**
-- ✅ Single endpoint: `POST /create?name=<repo-name>`.
-- ✅ Uses a GitHub PAT stored in **Secrets Manager**.
-- ✅ Returns structured JSON describing success **or** a precise error (e.g., duplicate repo).
+- Single endpoint: `POST /create?name=<repo-name>`.
+- Uses a GitHub PAT stored in **Secrets Manager**.
+- Returns structured JSON describing success **or** a precise error (e.g., duplicate repo).
 
 **Documentation**
-- ✅ This README explains setup, architecture, and ops in plain English.
+- This README explains setup, architecture, and ops in plain English.
 
 **CI**
-- ✅ Lint workflow (ESLint) for the function’s source.
+- Lint workflow (ESLint) for the function’s source.
 
 **Deployment**
-- ✅ **AWS CDK** to provision API Gateway, Lambda, IAM, and Secret.
-- ✅ **Netlify** for the web app with a permanent production URL.
+- **AWS CDK** to provision API Gateway, Lambda, IAM, and Secret.
+- **Netlify** for the web app with a permanent production URL.
 
 **Deliverables**
-- ✅ Repo URL & Deployment URL (see above).
+- Repo URL & Deployment URL (see above).
 
 ---
 
